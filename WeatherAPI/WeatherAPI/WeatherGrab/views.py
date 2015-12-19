@@ -1,15 +1,30 @@
 from django.http import HttpResponse
-import urllib2
-import request
+import urllib.request
 import simplejson
+#import request
 
-def getweatherdetails(request, placename, daysflag = False,hoursdet = 0,daysno='', windDet = False):
-    placenamelist = placename.split('|')
+def getweatherdetails(request):
+    querydetails = request.GET.get("details","").split("|")
+    daysflag = False
+    hoursdet = 0
+    daysno=''
+    windDet = False
+    for par in querydetails:
+        if 'place' in par:
+            placenamelist = par.split(':')[1:]
+        elif 'daysflag' in par:
+            daysflag = True
+        elif 'hoursdet' in par:
+            hoursdet = int(par.split(':')[1])
+        elif 'daysno' in par:
+            daysno = int(par.split(':')[1])
+        elif 'wind' in par:
+            windDet = True
     weatherJSON = {}
     for place in placenamelist:
         place = place.replace(' ','%20')
         url = 'http://api.openweathermap.org/data/2.5/weather?q='+place+',in&appid=2de143494c0b295cca9337e1e96b00e0'
-        resp = data = urllib2.urlopen(url).read()
+        resp = urllib.request.urlopen(url).read()
         try:
             data = simplejson.load(resp)
         except:
@@ -18,7 +33,7 @@ def getweatherdetails(request, placename, daysflag = False,hoursdet = 0,daysno='
             coordinates = data['coord']
             latitude , longitude = str(coordinates.get('lat', '')), str(coordinates.get('lon', ''))
             url = 'http://api.openweathermap.org/data/2.5/forecast?lat='+latitude+'&lon='+longitude+'&appid=2de143494c0b295cca9337e1e96b00e0'
-            resp = data = urllib2.urlopen(url).read()
+            resp =urllib.request.urlopen(url).read()
             try:
                 data = simplejson.load(resp)
             except:
@@ -31,26 +46,28 @@ def getweatherdetails(request, placename, daysflag = False,hoursdet = 0,daysno='
             time += moddiffofTime
             today = today.split('-')[0] +"-"+ today.split('-')[1] +"-"+ today.split('-')[2]+" "+str(time)+":00:00"
             for key in listDet:
-                if today == key.get('dt_txt',''):
-                    weatherJSON['DateTime'] = key.get('dt_txt','')
-                    weatherJSON['Exact Temperature'] = convertKelvinToCelcuis(request, key.get('main', {}).get('temp','Not Available Right Now'))
-                    weatherJSON['Max Temperature'] =  convertKelvinToCelcuis(request, key.get('main', {}).get('temp_max','Not Available Right Now'))
-                    weatherJSON['Min Temperature'] = convertKelvinToCelcuis(request, key.get('main', {}).get('temp_min','Not Available Right Now'))
-                    descritpion = key.get('weather', {})
-                    weatherJSON['Exact Description'] = descritpion.get('description', 'No Data Right Now') + descritpion.get('main', '')
-                    time  = time + hoursdet
+                #if today == key.get('dt_txt',''):
+                iterJson = {}
+                iterJson['Exact Temperature'] = convertKelvinToCelcuis(request, key.get('main', {}).get('temp','Not Available Right Now'))
+                iterJson['Max Temperature'] =  convertKelvinToCelcuis(request, key.get('main', {}).get('temp_max','Not Available Right Now'))
+                iterJson['Min Temperature'] = convertKelvinToCelcuis(request, key.get('main', {}).get('temp_min','Not Available Right Now'))
+                descritpion = key.get('weather', {})
+                iterJson['Exact Description'] = descritpion[0].get('description', 'No Data Right Now') + descritpion[0].get('main', '')
+                time  = time + hoursdet
+                if windDet == True:
+                    iterJson['WindDegree'] = data.get('wind', {}).get('deg', '')
+                    iterJson['speed'] = data.get('wind', {}).get('speed', '')
+                weatherJSON[key.get('dt_txt','')] = iterJson
         else:
-            weatherJSON['DateTime'] = data.get('dt_txt','')
-            weatherJSON['Exact Temperature'] = convertKelvinToCelcuis(request, data.get('main', {}).get('temp','Not Available Right Now'))
-            weatherJSON['Max Temperature'] =  convertKelvinToCelcuis(request, data.get('main', {}).get('temp_max','Not Available Right Now'))
-            weatherJSON['Min Temperature'] = convertKelvinToCelcuis(request, data.get('main', {}).get('temp_min','Not Available Right Now'))
-            descritpion = data.get('weather', {})
-            weatherJSON['Exact Description'] = descritpion.get('description', 'No Data Right Now') + descritpion.get('main', '')
-        if windDet == True:
-            weatherJSON['WindDegree'] = data.get('wind', {}).get('deg', '')
-            weatherJSON['speed'] = data.get('wind', {}).get('speed', '')
-            weatherJSON = simplejson.dumps(weatherJSON)
-    HttpResponse(weatherJSON)
+            #weatherJSON['DateTime'] = data.get('dt_txt','')
+            tempjson = {}
+            tempjson['Exact Temperature'] = convertKelvinToCelcuis(request, data.get('main', {}).get('temp','Not Available Right Now'))
+            tempjson['Max Temperature'] =  convertKelvinToCelcuis(request, data.get('main', {}).get('temp_max','Not Available Right Now'))
+            tempjson['Min Temperature'] = convertKelvinToCelcuis(request, data.get('main', {}).get('temp_min','Not Available Right Now'))
+            tempjson = data.get('weather', {})
+            tempjson['Exact Description'] = descritpion[0].get('description', 'No Data Right Now') + descritpion[0].get('main', '')
+            weatherJSON[key.get('dt_txt','')] = iterJson
+    return HttpResponse(simplejson.dumps(weatherJSON))
 
 def convertKelvinToCelcuis(request, temp):
     celsuis = temp - 273.15
