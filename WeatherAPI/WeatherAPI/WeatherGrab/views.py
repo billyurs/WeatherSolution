@@ -106,3 +106,6 @@ def payment(request):
 
     status = payment.create()
     return HttpResponse(status)
+
+
+
