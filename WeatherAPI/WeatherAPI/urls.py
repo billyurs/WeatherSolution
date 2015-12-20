@@ -8,5 +8,6 @@ urlpatterns = patterns('WeatherAPI.WeatherGrab.views',
     # url(r'^$', 'WeatherAPI.views.home', name='home'),
     # url(r'^blog/', include('blog.urls')),
     url(r'^$', 'getweatherdetails'),
+    url(r'payment$','payment'),
     url(r'^admin/', include(admin.site.urls)),
 )
